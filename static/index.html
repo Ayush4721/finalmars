@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#081225" />
+  <title>Multi-Agent Research System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Multi-Agent Research home">
+        <div class="brand-mark"><span>AI</span><i></i></div>
+        <div>
+          <div class="brand-title">Multi-Agent <span>Research System</span></div>
+          <div class="brand-subtitle">AI-powered research with LangGraph, Gemini &amp; Tavily</div>
+        </div>
+      </a>
+      <div class="topbar-right">
+        <span class="status-pill"><span class="status-dot"></span><span id="systemStatus">System online</span></span>
+        <button class="icon-button" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">☼</button>
+      </div>
+    </header>
+
+    <aside class="sidebar">
+      <nav class="side-nav" aria-label="Main navigation">
+        <button class="nav-item active" data-view="home"><span class="nav-icon">⌂</span>Home</button>
+        <button class="nav-item" data-view="history"><span class="nav-icon">◷</span>History</button>
+        <button class="nav-item" data-view="about"><span class="nav-icon">✦</span>About</button>
+        <button class="nav-item" data-view="api"><span class="nav-icon">‹ ›</span>API Docs</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="mini-logo">✧</div>
+        <p>Built with care using<br><strong>LangGraph, Gemini &amp; Tavily</strong></p>
+        <span>Smarter research. Better answers.</span>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <section class="hero">
+        <div class="hero-sparkle" aria-hidden="true">✦</div>
+        <div>
+          <div class="eyebrow"><span class="eyebrow-line"></span> YOUR AI RESEARCH WORKSPACE</div>
+          <h1>Ask anything.<br class="mobile-break"><span> Get real research.</span></h1>
+          <p>Explore a topic and let your multi-agent system search, analyze, and turn information into a clear, useful report.</p>
+        </div>
+      </section>
+
+      <section class="search-panel">
+        <form id="researchForm">
+          <label class="sr-only" for="topicInput">Research topic</label>
+          <div class="search-input-wrap"><span class="search-icon">⌕</span><input id="topicInput" name="topic" autocomplete="off" placeholder="e.g. Last 24 hours news of Delhi, AI trends, electric vehicles..." required maxlength="500"></div>
+          <button class="primary-button" id="researchButton" type="submit"><span class="button-icon">➤</span><span id="buttonText">Start research</span></button>
+        </form>
+        <div class="suggestions">
+          <span>Try:</span>
+          <button class="suggestion-chip" data-topic="Latest AI news and breakthroughs">Latest AI news</button>
+          <button class="suggestion-chip" data-topic="Last 24 hours news of Delhi">Delhi news</button>
+          <button class="suggestion-chip" data-topic="Renewable energy trends in 2026">Renewable energy trends</button>
+        </div>
+      </section>
+
+      <section class="feature-row" aria-label="System features">
+        <article class="feature-item"><div class="feature-icon green">⌘</div><div><strong>Multi-agent workflow</strong><span>Route · Research · Write</span></div></article>
+        <article class="feature-item"><div class="feature-icon blue">◎</div><div><strong>Web-grounded insights</strong><span>Powered by Tavily</span></div></article>
+        <article class="feature-item"><div class="feature-icon purple">✦</div><div><strong>Advanced AI</strong><span>Gemini + LangGraph</span></div></article>
+        <article class="feature-item"><div class="feature-icon teal">◇</div><div><strong>Clear results</strong><span>Structured responses</span></div></article>
+      </section>
+
+      <div class="content-grid">
+        <section class="report-card panel">
+          <div class="panel-heading">
+            <div class="heading-icon">▤</div>
+            <div><h2 id="reportHeading">Your research report</h2><p id="reportSubheading">Your results will appear here</p></div>
+            <span class="route-badge" id="routeBadge">READY</span>
+          </div>
+          <div class="report-meta" id="reportMeta" hidden>
+            <span class="topic-label">TOPIC</span><strong id="resultTopic"></strong>
+            <button class="subtle-button" id="copyButton" type="button">Copy report</button>
+          </div>
+          <div id="emptyState" class="empty-state">
+            <div class="empty-illustration"><span class="orb orb-one"></span><span class="orb orb-two"></span><span class="empty-doc">✧</span></div>
+            <h3>Your next big insight starts here.</h3>
+            <p>Enter a topic above to kick off your research agents. Your findings and final report will show up in this space.</p>
+            <div class="empty-points"><span>✓ Current information</span><span>✓ Organized findings</span><span>✓ One readable report</span></div>
+          </div>
+          <div id="reportContent" class="markdown-content" hidden></div>
+          <div id="errorBox" class="error-box" role="alert" hidden></div>
+          <div class="report-footer" id="reportFooter" hidden><span id="reportFootnote">Generated by your research pipeline</span><button class="subtle-button" id="downloadButton" type="button">↓ Export .txt</button></div>
+        </section>
+
+        <aside class="agents-card panel">
+          <div class="panel-heading agents-heading">
+            <div class="live-indicator"></div>
+            <div><h2>Agent activity</h2><p>Live workflow updates</p></div>
+            <span class="live-pill" id="livePill"><span></span> IDLE</span>
+          </div>
+          <div class="progress-track"><div id="progressBar"></div></div>
+          <div class="agent-list">
+            <article class="agent-step" data-agent="router">
+              <div class="agent-rail"><div class="agent-symbol">⌘</div><div class="rail-line"></div></div>
+              <div class="agent-info"><div class="agent-top"><strong>Router agent</strong><span class="agent-state">Waiting</span></div><p>Decides whether your question needs web research.</p></div>
+            </article>
+            <article class="agent-step" data-agent="search">
+              <div class="agent-rail"><div class="agent-symbol">⌕</div><div class="rail-line"></div></div>
+              <div class="agent-info"><div class="agent-top"><strong>Web research</strong><span class="agent-state">Waiting</span></div><p>Finds relevant pages and information from the web.</p></div>
+            </article>
+            <article class="agent-step" data-agent="scrape">
+              <div class="agent-rail"><div class="agent-symbol">◎</div><div class="rail-line"></div></div>
+              <div class="agent-info"><div class="agent-top"><strong>Scraper agent</strong><span class="agent-state">Waiting</span></div><p>Extracts useful context from relevant sources.</p></div>
+            </article>
+            <article class="agent-step" data-agent="writer">
+              <div class="agent-rail"><div class="agent-symbol">▤</div></div>
+              <div class="agent-info"><div class="agent-top"><strong>Writer agent</strong><span class="agent-state">Waiting</span></div><p>Organizes the information into a final answer.</p></div>
+            </article>
+          </div>
+          <div class="agent-note"><span>✦</span><p><strong>How it works</strong><br>Agents run through your LangGraph pipeline. Timing and steps depend on your graph and the question.</p></div>
+          <div class="activity-log-wrap"><div class="activity-title">ACTIVITY LOG <button id="clearLogButton" type="button">Clear</button></div><div id="activityLog" class="activity-log"><div class="log-empty">No activity yet. Start a research task.</div></div></div>
+        </aside>
+      </div>
+
+      <footer class="page-footer"><span>Multi-Agent Research System</span><span>Built for curious minds <b>✦</b></span></footer>
+    </main>
+  </div>
+
+  <dialog id="infoDialog" class="info-dialog">
+    <div class="dialog-head"><h2 id="dialogTitle">About</h2><button id="closeDialog" class="icon-button" aria-label="Close">×</button></div>
+    <div id="dialogBody" class="dialog-body"></div>
+  </dialog>
+  <script src="/static/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+# ==============================
+# LLM & Agent Framework
+# ==============================
+langchain
+langchain-core
+langgraph
+langchain-google-genai
+
+# ==============================
+# Web Search
+# ==============================
+langchain-tavily
+tavily-python
+
+# ==============================
+# Web Scraping
+# ==============================
+requests
+beautifulsoup4
+
+# ==============================
+# API
+# ==============================
+fastapi
+uvicorn[standard]
+
+# ==============================
+# Data Validation & Configuration
+# ==============================
+pydantic
+python-dotenv
+
+
