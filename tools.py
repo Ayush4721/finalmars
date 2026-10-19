@@ -1,3 +1,4 @@
+
 import os
 
 import requests
@@ -19,72 +20,79 @@ if not api_key:
 tavily = TavilyClient(api_key=api_key)
 
 
-# ---------------- WEB SEARCH TOOL ----------------
+# ============================================================
+# WEB SEARCH TOOL
+# ============================================================
 
 @tool
 def web_search(query: str) -> str:
-    """Search the web and return relevant titles, URLs and snippets."""
+    """Search the web and return titles, URLs, snippets and dates."""
 
     try:
         response = tavily.search(
             query=query,
-            max_results=4
+            max_results=3,
+            search_depth="basic"
         )
 
         results = response.get("results", [])
         output = []
 
         for result in results:
+            title = result.get("title", "Unknown")
+            url = result.get("url", "Unknown")
+            snippet = result.get("content", "")
+            published = (
+                result.get("published_date")
+                or "Not provided"
+            )
+
             output.append(
-                f"Title: {result.get('title', 'Unknown')}\n"
-                f"URL: {result.get('url', 'Unknown')}\n"
-                f"Snippet: {result.get('content', '')[:500]}\n"
+                f"Title: {title}\n"
+                f"URL: {url}\n"
+                f"Published: {published}\n"
+                f"Snippet: {snippet[:500]}"
             )
 
         if not output:
             return "No relevant search results were found."
 
-        return "\n---\n".join(output)
+        return "\n\n---\n\n".join(output)
 
     except Exception as e:
         return f"Web search failed: {str(e)}"
 
 
-# ---------------- WEB SCRAPER TOOL ----------------
+# ============================================================
+# WEB SCRAPER TOOL
+# Kept available for future use; not called by the current graph.
+# ============================================================
 
 @tool
 def scrape_url(url: str) -> str:
-    """Scrape an HTTP or HTTPS article URL and return its clean text."""
+    """Extract readable text from an HTTP or HTTPS webpage."""
 
     if not url.startswith(("http://", "https://")):
         return "Invalid URL. Only HTTP and HTTPS URLs are supported."
 
     try:
-
         response = requests.get(
             url,
-            timeout=15,
+            timeout=10,
             headers={
-                "User-Agent": "Mozilla/5.0 ResearchBot/1.0"
+                "User-Agent": "Mozilla/5.0"
             }
         )
 
         response.raise_for_status()
 
-        content_type = response.headers.get(
-            "Content-Type",
-            ""
-        )
+        content_type = response.headers.get("Content-Type", "")
 
         if "text/html" not in content_type.lower():
             return "The URL does not return an HTML page."
 
-        soup = BeautifulSoup(
-            response.text,
-            "html.parser"
-        )
+        soup = BeautifulSoup(response.text, "html.parser")
 
-        # Remove irrelevant elements
         for tag in soup([
             "script",
             "style",
@@ -92,12 +100,11 @@ def scrape_url(url: str) -> str:
             "footer",
             "header",
             "aside",
-            "form"
+            "form",
+            "noscript"
         ]):
-
             tag.decompose()
 
-        # Prefer article content
         article = (
             soup.find("article")
             or soup.find("main")
@@ -117,13 +124,11 @@ def scrape_url(url: str) -> str:
 
         return (
             f"Source URL: {url}\n\n"
-            f"{text[:6000]}"
+            f"{text[:3000]}"
         )
 
     except requests.RequestException as e:
-
         return f"Could not scrape URL: {str(e)}"
 
     except Exception as e:
-
         return f"Scraping failed: {str(e)}"

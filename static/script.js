@@ -155,25 +155,27 @@ function showError(message) {
 }
 function hideError() { errorBox.hidden = true; errorBox.textContent = ""; }
 
-function findReport(value, depth = 0) {
+function findReport(value, depth = 0, allowShortString = false) {
   if (depth > 5 || value == null) return "";
   if (typeof value === "string") {
     const trimmed = value.trim();
-    if (trimmed.length > 100 && /(\n|\.|#|\*\*)/.test(trimmed)) return trimmed;
+    if (trimmed && (allowShortString || (trimmed.length > 100 && /(\n|\.|#|\*\*)/.test(trimmed)))) return trimmed;
     return "";
   }
   if (Array.isArray(value)) {
-    for (const item of value) { const found = findReport(item, depth + 1); if (found) return found; }
+    for (const item of value) { const found = findReport(item, depth + 1, allowShortString); if (found) return found; }
     return "";
   }
   if (typeof value === "object") {
-    const preferred = ["report", "answer", "final_answer", "final_report", "output", "response", "content", "result"];
+    const preferred = ["report", "answer", "final_answer", "final_report", "output", "response", "content", "result", "text"];
+    const reportKeys = ["report", "answer", "final_answer", "final_report"];
     for (const key of preferred) {
-      if (typeof value[key] === "string" && value[key].trim().length > 30) return value[key].trim();
+      const found = findReport(value[key], depth + 1, allowShortString || reportKeys.includes(key));
+      if (found) return found;
     }
     for (const [key, item] of Object.entries(value)) {
       if (/report|answer|writer|final/i.test(key)) {
-        const found = findReport(item, depth + 1);
+        const found = findReport(item, depth + 1, true);
         if (found) return found;
       }
     }

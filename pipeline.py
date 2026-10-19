@@ -1,3 +1,4 @@
+import re
 from typing import TypedDict
 
 from langgraph.graph import StateGraph, START, END
@@ -5,10 +6,9 @@ from langgraph.graph import StateGraph, START, END
 from agents import (
     route_question,
     direct_answer,
-    build_search_agent,
-    build_reader_agent,
     write_report
 )
+from tools import web_search,scrape_url
 
 
 # ============================================================
@@ -16,15 +16,10 @@ from agents import (
 # ============================================================
 
 class ResearchState(TypedDict, total=False):
-
     topic: str
-
     route: str
-
     search_results: str
-
     scraped_content: str
-
     report: str
 
 
@@ -33,20 +28,16 @@ class ResearchState(TypedDict, total=False):
 # ============================================================
 
 def router_node(state: ResearchState):
-
     print("\n" + "=" * 50)
     print("ROUTER AGENT")
     print("=" * 50)
 
     topic = state["topic"]
-
     route = route_question(topic)
 
     print(f"\n[ROUTER] -> {route}")
 
-    return {
-        "route": route
-    }
+    return {"route": route}
 
 
 # ============================================================
@@ -54,152 +45,145 @@ def router_node(state: ResearchState):
 # ============================================================
 
 def direct_node(state: ResearchState):
-
     print("\n" + "=" * 50)
     print("DIRECT ANSWER")
     print("=" * 50)
 
-    topic = state["topic"]
-
-    report = direct_answer(topic)
+    report = direct_answer(state["topic"])
 
     print("\nDirect answer generated.")
 
-    return {
-        "report": report
-    }
+    return {"report": report}
 
 
 # ============================================================
-# NODE 2: SEARCH
+# NODE 2: WEB SEARCH
 # ============================================================
 
 def search_node(state: ResearchState):
-
     print("\n" + "=" * 50)
-    print("STEP 1 - SEARCH AGENT")
+    print("STEP 1 - WEB SEARCH")
     print("=" * 50)
 
-    agent = build_search_agent()
+    topic = state["topic"]
 
-    result = agent.invoke({
-        "messages": [
-            (
-                "user",
-                f"""
-Find recent, reliable and relevant information about:
+    print(f"\nSearching for: {topic}")
 
-{state['topic']}
-
-Use web_search to obtain:
-
-- Source titles
-- URLs
-- Search snippets
-- Publication dates when available
-
-Focus on information that is relevant to the user's question.
-"""
-            )
-        ]
+    search_results = web_search.invoke({
+        "query": topic
     })
 
-    search_results = result["messages"][-1].content
+    if not isinstance(search_results, str):
+        search_results = str(search_results)
 
-    print("\nSearch completed.")
+    print("\nWeb search completed.")
 
-    return {
-        "search_results": search_results
-    }
+    return {"search_results": search_results}
 
+
+#---------------------scraper node ----------------------
 
 # ============================================================
-# NODE 3: READER
+# NODE 2: SCRAPER
 # ============================================================
 
-def reader_node(state: ResearchState):
-
+def scrape_node(state: ResearchState):
     print("\n" + "=" * 50)
-    print("STEP 2 - READER AGENT")
+    print("STEP 2 - SCRAPER")
     print("=" * 50)
 
-    agent = build_reader_agent()
+    search_results = state.get("search_results", "")
 
-    result = agent.invoke({
-        "messages": [
-            (
-                "user",
-                f"""
-Research topic:
+    # Extract URLs from the formatted Tavily search results.
+    urls = re.findall(
+        r"URL:\s*(https?://[^\s]+)",
+        search_results
+    )
 
-{state['topic']}
+    # Remove duplicate URLs while preserving search order.
+    urls = list(dict.fromkeys(urls))
 
+    print(f"URLs discovered: {len(urls)}")
 
-SEARCH RESULTS:
+    scraped_entries = []
 
-{state['search_results']}
+    # Scrape only the top two unique URLs.
+    for url in urls[:2]:
+        print(f"\nScraping: {url}")
 
+        try:
+            content = scrape_url.invoke({"url": url})
 
-Read the most relevant sources.
+            if not isinstance(content, str):
+                content = str(content)
 
-Use scrape_url to retrieve the article/page content.
+            if (
+                content.strip()
+                and not content.startswith((
+                    "Could not scrape URL:",
+                    "Scraping failed:",
+                    "Invalid URL.",
+                    "The URL does not return an HTML page.",
+                    "No readable article content was found.",
+                    "The page contains no readable text."
+                ))
+            ):
+                print(f"Scrape successful: {len(content)} characters")
+            else:
+                print(f"Scrape returned an error or empty content: {url}")
 
-Extract:
-
-- Important facts
-- Relevant details
-- Publication dates
-- Names
-- Numbers
-- Evidence
-- Source URLs
-
-Do not invent information.
-"""
+            scraped_entries.append(
+                f"Source URL: {url}\n{content}"
             )
-        ]
-    })
 
-    scraped_content = result["messages"][-1].content
+        except Exception as e:
+            print(f"Scrape failed: {url} - {e}")
+            scraped_entries.append(
+                f"Source URL: {url}\nScraping failed: {e}"
+            )
 
-    print("\nReading completed.")
+    scraped_content = (
+        "\n\n---\n\n".join(scraped_entries)
+        if scraped_entries
+        else "No URLs were found in the search results."
+    )
 
-    return {
-        "scraped_content": scraped_content
-    }
+    print(f"\nTotal scraped content: {len(scraped_content)} characters")
 
+    return {"scraped_content": scraped_content}
 
 # ============================================================
-# NODE 4: WRITER
+# NODE 3: WRITER
 # ============================================================
 
 def writer_node(state: ResearchState):
-
     print("\n" + "=" * 50)
-    print("STEP 3 - WRITER AGENT")
+    print("STEP 3 - WRITER")
     print("=" * 50)
 
-    research = f"""
-SEARCH RESULTS:
+    search_results = state.get(
+        "search_results",
+        "No search results available."
+    )
 
-{state['search_results']}
+    scraped_content = state.get(
+        "scraped_content",
+        "No scraped content available."
+    )
 
-
-SCRAPED ARTICLE CONTENT:
-
-{state['scraped_content']}
-"""
+    print(f"Search results length: {len(search_results)}")
+    print(f"Scraped content length: {len(scraped_content)}")
 
     report = write_report(
         topic=state["topic"],
-        research=research
+        research=search_results,
+        scraped_content=scraped_content
     )
 
     print("\nFinal report generated.")
 
-    return {
-        "report": report
-    }
+    return {"report": report}
+
 
 
 # ============================================================
@@ -207,8 +191,7 @@ SCRAPED ARTICLE CONTENT:
 # ============================================================
 
 def decide_route(state: ResearchState):
-
-    if state["route"] == "DIRECT":
+    if state.get("route") == "DIRECT":
         return "direct"
 
     return "research"
@@ -219,35 +202,18 @@ def decide_route(state: ResearchState):
 # ============================================================
 
 def build_research_graph():
-
     graph = StateGraph(ResearchState)
 
-    # Add nodes
     graph.add_node("router", router_node)
-
     graph.add_node("direct", direct_node)
-
     graph.add_node("search", search_node)
-
-    graph.add_node("reader", reader_node)
-
+    graph.add_node("scrape", scrape_node)  
     graph.add_node("writer", writer_node)
+    # Start with the router.
+    
+    graph.add_edge(START, "router")
 
-
-    # --------------------------------------------------------
-    # START → ROUTER
-    # --------------------------------------------------------
-
-    graph.add_edge(
-        START,
-        "router"
-    )
-
-
-    # --------------------------------------------------------
-    # ROUTER → DIRECT / RESEARCH
-    # --------------------------------------------------------
-
+    # Select the direct-answer or research branch.
     graph.add_conditional_edges(
         "router",
         decide_route,
@@ -257,36 +223,13 @@ def build_research_graph():
         }
     )
 
+    # Direct branch.
+    graph.add_edge("direct", END)
 
-    # --------------------------------------------------------
-    # DIRECT → END
-    # --------------------------------------------------------
-
-    graph.add_edge(
-        "direct",
-        END
-    )
-
-
-    # --------------------------------------------------------
-    # RESEARCH PIPELINE
-    # --------------------------------------------------------
-
-    graph.add_edge(
-        "search",
-        "reader"
-    )
-
-    graph.add_edge(
-        "reader",
-        "writer"
-    )
-
-    graph.add_edge(
-        "writer",
-        END
-    )
-
+    # Research branch.
+    graph.add_edge("search", "scrape")    
+    graph.add_edge("scrape", "writer")     
+    graph.add_edge("writer", END)
 
     return graph.compile()
 
@@ -303,18 +246,20 @@ research_graph = build_research_graph()
 # ============================================================
 
 def run_research_pipeline(topic: str) -> dict:
+    topic = topic.strip()
+
+    if not topic:
+        raise ValueError("Please enter a research question.")
 
     result = research_graph.invoke({
         "topic": topic
     })
 
-
     print("\n" + "=" * 50)
     print("FINAL ANSWER")
     print("=" * 50)
 
-    print(result["report"])
-
+    print(result.get("report", "No report was generated."))
 
     return result
 
@@ -324,17 +269,12 @@ def run_research_pipeline(topic: str) -> dict:
 # ============================================================
 
 if __name__ == "__main__":
-
-    topic = input(
-        "\nEnter a research topic: "
-    ).strip()
+    topic = input("\nEnter a research topic: ").strip()
 
     if topic:
-
-        run_research_pipeline(topic)
-
+        try:
+            run_research_pipeline(topic)
+        except Exception as e:
+            print(f"\nPipeline failed: {e}")
     else:
-
-        print(
-            "Please enter a research topic."
-        )
+        print("Please enter a research topic.")
