@@ -1,9 +1,14 @@
-#virtual environment
+# Environment variables and API keys
+.env
+.env.*
+!.env.example
+
+# Python virtual environments
 venv/
 .venv/
+env/
 
-# Python cache
+# Python cache files
 __pycache__/
-
-#Environment variables
-.env
+*.py[cod]
+*$py.class
